@@ -10,7 +10,7 @@
 
 ## 数据位置
 
-设置、下载记录、组件和日志在 `~/Library/Application Support/VidFlow`，登录信息在钥匙串（名称 `VidFlow sign-in`）和 `~/Library/WebKit`。不收集任何使用数据。
+设置、下载记录、组件和日志在 `~/Library/Application Support/VidFlow`，登录信息在钥匙串（名称 `VidFlow sign-in`）。不收集任何使用数据。
 
 ## 开发
 

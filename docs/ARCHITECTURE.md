@@ -30,9 +30,9 @@ C# 测试用例也随之移植，期望值保持不变。字符串表 `Strings.t
 |---|---|---|
 | 进程树管理 | Job Object | 独立进程组（`posix_spawn`），SIGTERM 后升级 SIGKILL；PID 记录在文件中，下次启动清理崩溃遗留 |
 | 登录信息 | `cookies.txt` | Keychain 保存；运行时写入 0700 临时目录的 0600 文件供 yt-dlp 读取，退出时写回并删除 |
-| 内嵌浏览器 | WebView2 | WKWebView（持久数据存储） |
+| 内嵌浏览器 | WebView2 | WKWebView（数据只在内存，每次启动从 Keychain 恢复） |
 | 抖音响应读取 | WebView2 响应事件 | WKWebView 无此 API，改为文档开始时注入脚本，包装 fetch / XHR |
-| ffmpeg 来源 | yt-dlp/FFmpeg-Builds | 该项目没有 macOS 版，改用 ffmpeg.martin-riedl.de（静态构建，有 SHA-256） |
+| ffmpeg 来源 | yt-dlp/FFmpeg-Builds | 该项目没有 macOS 版，改用 ffmpeg.martin-riedl.de（静态构建，有 SHA-256），不可用时退回 eugeneware/ffmpeg-static |
 | aria2 来源 | 官方发布 | 官方没有 macOS 版，随 App 提供 |
 | 自更新 | Inno Setup 安装器 | zip + SHA-256 + 开发者签名校验，退出后由脚本替换 |
 | 托盘 | 通知区域 | 关闭窗口继续下载 + Dock 进度 + 可选菜单栏项 |

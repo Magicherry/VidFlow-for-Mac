@@ -115,6 +115,15 @@ struct ReliabilityTests {
         #expect(!args.contains("--downloader"))
     }
 
+    @Test func aSpeedLimitMeansOneConnection() {
+        var settings = AppSettings()
+        settings.speedLimitKBps = 500
+        let args = YtDlpArgs.download(request("https://www.youtube.com/watch?v=a"), settings: settings, env: .init(aria2Path: "/a/aria2c"))
+        #expect(args.contains("-r") && args.contains("500K"))
+        #expect(args[args.firstIndex(of: "-N")! + 1] == "1")
+        #expect(!args.contains("--downloader"))
+    }
+
     @Test func overwriteIsAskedOfYtDlpOnlyWhenWanted() {
         var r = request("https://www.youtube.com/watch?v=a")
         #expect(!YtDlpArgs.download(r, settings: AppSettings(), env: .init()).contains("--force-overwrites"))
