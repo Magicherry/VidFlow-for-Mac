@@ -19,10 +19,3 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-
----
-
-This license covers VidFlow for Mac's own code. Helpers/aria2c is a separate
-program under the GNU GPL: see VidFlow/Resources/ThirdPartyNotices.txt and
-VidFlow/Resources/aria2-COPYING.txt. Platform names and logos belong to their
-owners and are not covered by this license.
