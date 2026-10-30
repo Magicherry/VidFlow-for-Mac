@@ -199,8 +199,6 @@ public enum YtDlpArgs {
     private static func connections(_ s: AppSettings, _ env: Environment) -> [String] {
         // yt-dlp's -r applies to each connection, so eight of them would download at eight times the limit.
         if s.speedLimitKBps > 0 { return ["-N", "1"] }
-        // yt-dlp's -r applies to each connection, so eight of them would download at eight times the limit.
-        if s.speedLimitKBps > 0 { return ["-N", "1"] }
         var args = ["-N", "8"]
         guard let aria2 = env.aria2Path else { return args }
         args += ["--downloader", aria2, "--downloader", "m3u8:native", "--downloader", "dash:native",
