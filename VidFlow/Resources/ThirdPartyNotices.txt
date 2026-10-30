@@ -1,0 +1,17 @@
+VidFlow for Mac: third-party software
+
+aria2 1.37.0
+  Copyright (C) 2006, 2019 Tatsuhiro Tsujikawa
+  License: GNU General Public License, version 2 or later, with an OpenSSL exception.
+  The full text is in aria2-COPYING.txt, next to this file.
+  Included as a separate program at Contents/Helpers/aria2c, built from unmodified source.
+  Source code: published with each VidFlow for Mac release as aria2-1.37.0.tar.xz, and at
+  https://github.com/aria2/aria2/releases/tag/release-1.37.0
+  How it is built: scripts/build-aria2.sh in https://github.com/Magicherry/VidFlow-for-Mac
+
+The following are not included. VidFlow downloads them from their publishers when you ask it to.
+
+yt-dlp: Unlicense. https://github.com/yt-dlp/yt-dlp
+FFmpeg: GPL. https://ffmpeg.org/legal.html
+  Builds from https://ffmpeg.martin-riedl.de, or https://github.com/eugeneware/ffmpeg-static as a fallback.
+Deno: MIT. https://github.com/denoland/deno

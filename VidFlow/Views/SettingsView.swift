@@ -532,7 +532,7 @@ private struct UpdatesPane: View {
                     Button(L.get("Update_Download")) { Task { await updates.download() } }
                 } else {
                     Button(L.get("Update_OpenReleases")) {
-                        NSWorkspace.shared.open(URL(string: "https://github.com/Magicherry/VidFlow-for-Mac/releases/latest")!)
+                        NSWorkspace.shared.open(URL(string: "https://github.com/Magicherry/VidFlow-for-Mac/releases")!)
                     }
                 }
             }
@@ -621,6 +621,9 @@ private struct AboutPane: View {
                 }
             }
             Section {
+                Button(L.get("About_ThirdPartyNotices")) {
+                    if let file = Bundle.main.url(forResource: "ThirdPartyNotices", withExtension: "txt") { NSWorkspace.shared.open(file) }
+                }
                 DisclosureGroup(L.get("Licenses_Title")) {
                 ForEach(Self.licenses, id: \.name) { item in
                     VStack(alignment: .leading, spacing: 2) {

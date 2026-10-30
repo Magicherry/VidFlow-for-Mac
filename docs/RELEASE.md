@@ -22,8 +22,10 @@ DEVELOPER_ID="Developer ID Application: 姓名 (TEAMID)" NOTARY_PROFILE=vidflow 
 
 ## 与 Windows 版的关系
 
-Mac 版在独立仓库 `Magicherry/VidFlow-for-Mac` 发布，版本号和 Release 都与 Windows 版互不影响。App 从该仓库的
-`releases/latest/download/update-macos.json` 读取更新清单，所以每个 Release 都要上传 `dist/` 下的全部文件。
+Mac 版在独立仓库 `Magicherry/VidFlow-for-Mac` 发布，版本号和 Release 都与 Windows 版互不影响。App 从该仓库 `main` 分支的
+`update-macos.json` 读取更新清单，所以每次发布后都要把 `dist/update-macos.json` 复制到仓库根目录并推送。未签名的版本只提示有新版本，不会自动安装。
+
+每个 Release 都要附上 `aria2-<版本>.tar.xz`（aria2 的源码），这是 GPL 的要求。
 要换仓库名，请修改 `UpdateService.manifestSource`、`scripts/build-release.sh` 的 `BASE_URL`，以及设置和帮助菜单里的链接。
 
 ## 更新 aria2

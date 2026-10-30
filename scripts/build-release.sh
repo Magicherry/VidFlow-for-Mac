@@ -7,7 +7,7 @@
 # Signing, all optional; without them the build is ad-hoc signed, for local use only:
 #   DEVELOPER_ID   "Developer ID Application: Name (TEAMID)"
 #   NOTARY_PROFILE a profile saved with: xcrun notarytool store-credentials
-#   RELEASE_URL    where the zip will live (default: this version's GitHub release)
+#   RELEASE_URL    the release page's download folder, for the manifest (default: this version's tag)
 #   ARCHS_OVERRIDE "arm64" for a quick single-architecture build
 set -euo pipefail
 

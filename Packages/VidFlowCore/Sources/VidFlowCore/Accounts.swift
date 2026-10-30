@@ -278,7 +278,7 @@ public enum BilibiliQRLogin {
     }
 }
 
-/// Published next to each release as update-macos.json.
+/// Kept in the repository as update-macos.json, so test releases can announce themselves too.
 public struct UpdateManifest: Codable, Equatable, Sendable {
     public var version: String
     public var url: String
@@ -306,7 +306,7 @@ public enum UpdateService {
     /// VIDFLOW_UPDATE_MANIFEST overrides the source (an http(s) URL or a local file) for testing.
     public static var manifestSource: String {
         if let custom = ProcessInfo.processInfo.environment["VIDFLOW_UPDATE_MANIFEST"], !custom.isEmpty { return custom }
-        return "https://github.com/Magicherry/VidFlow-for-Mac/releases/latest/download/update-macos.json"
+        return "https://raw.githubusercontent.com/Magicherry/VidFlow-for-Mac/main/update-macos.json"
     }
 
     public static func parseManifest(_ data: Data) throws -> UpdateManifest { try JSONFile.decoder().decode(UpdateManifest.self, from: data) }
