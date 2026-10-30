@@ -15,7 +15,7 @@ DEVELOPER_ID="Developer ID Application: 姓名 (TEAMID)" NOTARY_PROFILE=vidflow 
 
 ## GitHub Actions
 
-`.github/workflows/macos.yml` 在推送和 PR 时运行测试和构建；推送 `v*` 标签时签名、公证并创建 Release。需要的 secrets：
+`.github/workflows/macos.yml` 平时推送不运行。测试和构建要在 Actions 页面手动触发；推送 `v*` 标签时签名、公证并创建 Release，这一步不会先跑测试，发布前请自行运行。需要的 secrets：
 `DEVELOPER_ID_P12_BASE64`、`DEVELOPER_ID_P12_PASSWORD`、`DEVELOPER_ID_NAME`、`APPLE_ID`、`APPLE_TEAM_ID`、`APPLE_APP_PASSWORD`。
 
 测试和构建部分已在 GitHub 上跑通；签名、公证和发布部分还没有运行过。
