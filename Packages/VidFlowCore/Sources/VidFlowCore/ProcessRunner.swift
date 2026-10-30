@@ -47,8 +47,9 @@ public enum ProcessRunner {
             argv.forEach { free($0) }
         }
 
-        var pid: pid_t = 0
-        let spawned = posix_spawn(&pid, exe, &actions, &attrs, argv, envp)
+        var spawnedPid: pid_t = 0
+        let spawned = posix_spawn(&spawnedPid, exe, &actions, &attrs, argv, envp)
+        let pid = spawnedPid
         close(out[1])
         close(err[1])
         guard spawned == 0 else {
