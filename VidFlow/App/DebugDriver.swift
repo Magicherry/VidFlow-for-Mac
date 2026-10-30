@@ -64,6 +64,42 @@ final class DebugDriver {
         case "quit":
             model.updates.isInstallingNow = true // skips the confirmation
             NSApp.terminate(nil)
+        case "sample":
+            var v = VideoInfo(url: "https://www.youtube.com/watch?v=aqz-KE-bpKQ", title: arg == "long" ? String(repeating: "Big Buck Bunny 超长标题测试 Official Blender Foundation Short Film ", count: 4) : "Big Buck Bunny 60fps 4K - Official Blender Foundation Short Film")
+            v.platform = .youTube
+            v.uploader = "Blender"
+            v.uploadDate = "20141110"
+            v.duration = 635
+            v.thumbnailURL = "https://i.ytimg.com/vi/aqz-KE-bpKQ/maxresdefault.jpg"
+            v.qualities = [QualityOption(height: 2160, fps: 60, estimatedBytes: 2_100_000_000), QualityOption(height: 1080, fps: 60, estimatedBytes: 400_000_000)]
+            v.codecs = ["h264": 1080, "av1": 2160]
+            v.hdrKinds = arg == "hdr" ? ["HDR10"] : []
+            model.composer.urlText = v.url
+            if arg == "list" {
+                var p = PlaylistInfo(url: v.url, title: "Google Search Stories")
+                p.platform = .youTube
+                p.uploader = "Google"
+                p.thumbnailURL = v.thumbnailURL
+                p.entries = (1...6).map { PlaylistEntry(index: $0, url: v.url + "&i=\($0)", title: "Story \($0)", duration: 90) }
+                model.composer.selectedEntries = Set(p.entries.map(\.index))
+                model.composer.result = .playlist(p)
+            } else {
+                model.composer.result = .video(v)
+            }
+        case "inspector":
+            model.toggleInspector()
+        case "fakeactive":
+            if let item = model.downloads.items.first {
+                item.state = .downloading
+                item.progress = 37.4
+                item.statusText = "Video · 37.4%"
+                item.speed = 6_300_000
+                item.eta = 172
+            }
+        case "toast":
+            model.composer.toast = L.format("Home_AddedOne", arg)
+        case "restart":
+            model.quitRelaunching()
         case "dup":
             model.composer.resolveDuplicates(downloadAgain: arg == "again")
         case "refreshfiles":
@@ -179,7 +215,7 @@ final class DebugDriver {
         case .playlist(let p): "playlist: \(p.title) | \(p.entries.count) entries"
         case .batch: "batch: \(c.batch.map { "\($0.isLoading ? "loading" : $0.failed ? "failed" : "ok") \($0.title)" })"
         }
-        var lines = ["composer: \(result)", "message: \(c.message?.text ?? "-")", "window: \(NSApp.windows.map { "\($0.title)[\($0.isVisible) \(Int($0.frame.width))x\(Int($0.frame.height))]" })", "inspector: \(model.showOptionsInspector) duplicates: \(c.confirmDuplicates?.count ?? -1)"]
+        var lines = ["composer: \(result)", "message: \(c.message?.text ?? "-")", "window: \(NSApp.windows.map { "\($0.title)[\($0.isVisible) \(Int($0.frame.width))x\(Int($0.frame.height))]" })", "menus: \(NSApp.mainMenu?.items.map(\.title) ?? []) editItems: \(NSApp.mainMenu?.items.first { $0.submenu?.items.contains { $0.action == #selector(NSText.copy(_:)) } ?? false }?.submenu?.items.prefix(3).map(\.title) ?? []) nav: \(L.get("Nav_Home"))", "inspector: \(model.showOptionsInspector) duplicates: \(c.confirmDuplicates?.count ?? -1)"]
         lines += model.components.components.map { "tool \($0.tool.rawValue): \($0.state) \($0.version ?? "-") latest \($0.latest ?? "-") path \(model.tools.path($0.tool) ?? "-") \(Int($0.progress ?? -1))%" }
         lines.append("install: installing=\(model.components.installing) \(model.components.lastResult?.message ?? "-")")
         lines += model.downloads.items.map { i in

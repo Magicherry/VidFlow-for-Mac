@@ -1,9 +1,12 @@
+import CoreTransferable
 import SwiftUI
 import VidFlowCore
 
 struct MainView: View {
     @Environment(AppModel.self) private var model
     @State private var columns = NavigationSplitViewVisibility.all
+    @State private var dropTargeted = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         @Bindable var model = model
@@ -19,13 +22,39 @@ struct MainView: View {
             }
         }
         .modifier(ActionBridge())
-        .dropDestination(for: String.self) { items, _ in
-            let text = items.joined(separator: " ")
+        .dropDestination(for: DroppedLink.self) { items, _ in
+            let text = items.map(\.text).joined(separator: " ")
             guard !UrlTools.extractURLs(text).isEmpty else { return false }
             model.open(links: text)
             return true
+        } isTargeted: { dropTargeted = $0 }
+        .overlay {
+            if dropTargeted {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(Color.accentColor.opacity(0.08))
+                        .strokeBorder(Color.accentColor, lineWidth: 2)
+                    Label(L.get("Drop_Hint"), systemImage: "arrow.down.circle.fill")
+                        .font(.title3.weight(.medium))
+                        .foregroundStyle(Color.accentColor)
+                }
+                .padding(8)
+                .allowsHitTesting(false)
+                .transition(.opacity)
+            }
         }
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.15), value: dropTargeted)
         .sheet(isPresented: $model.showFirstRun) { FirstRunView() }
+    }
+}
+
+/// A link dragged from a browser arrives as a URL, selected text as a string.
+nonisolated struct DroppedLink: Transferable {
+    var text: String
+
+    static var transferRepresentation: some TransferRepresentation {
+        ProxyRepresentation(importing: { (url: URL) in DroppedLink(text: url.absoluteString) })
+        ProxyRepresentation(importing: { (text: String) in DroppedLink(text: text) })
     }
 }
 
@@ -45,35 +74,77 @@ private struct Sidebar: View {
             model.sidebar = item
         })) {
             Label(L.get("Nav_Home"), systemImage: "plus.circle").tag(SidebarItem.newDownload)
-            Label(L.get("Nav_Downloads"), systemImage: "arrow.down.circle")
+            Label {
+                Text(L.get("Nav_Downloads"))
+            } icon: {
+                // A hop when something joins the queue, so it's clear where it went.
+                Image(systemName: "arrow.down.circle")
+                    .symbolEffect(.bounce, value: model.downloads.addedCount)
+            }
                 .badge(model.downloads.activeCount)
                 .tag(SidebarItem.downloads(.all))
             Label(L.get("Nav_Templates"), systemImage: "slider.horizontal.3").tag(SidebarItem.templates)
         }
         .listStyle(.sidebar)
-        // Pinned under the list, the way apps keep the account apart from their content.
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            Button {
-                model.sidebar = .accounts
-            } label: {
-                Label(L.get("Nav_Accounts"), systemImage: "person.crop.circle")
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .contentShape(Rectangle())
-                    .background(model.sidebar == .accounts ? AnyShapeStyle(.selection) : AnyShapeStyle(.clear), in: RoundedRectangle(cornerRadius: 6))
+        // Pinned under the list with a picture and a name, as the App Store and Music do.
+        .safeAreaInset(edge: .bottom, spacing: 0) { AccountEntry() }
+    }
+}
+
+/// The account's place at the foot of the sidebar.
+private struct AccountEntry: View {
+    @Environment(AppModel.self) private var model
+    @State private var hovering = false
+
+    private var signedIn: Int {
+        _ = model.accountsRevision
+        return CookieVault.signInPlatforms.filter(model.vault.isLoggedIn).count
+    }
+
+    var body: some View {
+        let selected = model.sidebar == .accounts
+        Button {
+            model.sidebar = .accounts
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "person.crop.circle.fill")
+                    .resizable()
+                    .symbolRenderingMode(.hierarchical)
+                    .foregroundStyle(.secondary)
+                    .frame(width: 26, height: 26)
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(L.get("Nav_Accounts")).lineLimit(1)
+                    Text(signedIn > 0 ? L.format("Accounts_SignedInCount", signedIn) : L.get("Accounts_NotSignedIn"))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+                Spacer(minLength: 0)
             }
-            .buttonStyle(.plain)
-            .padding(10)
-            .accessibilityAddTraits(model.sidebar == .accounts ? .isSelected : [])
+            .padding(.horizontal, 8)
+            .padding(.vertical, 5)
+            .contentShape(RoundedRectangle(cornerRadius: 8))
+            .background(selected ? AnyShapeStyle(.quaternary) : hovering ? AnyShapeStyle(.quinary) : AnyShapeStyle(.clear),
+                        in: RoundedRectangle(cornerRadius: 8))
         }
+        .buttonStyle(.plain)
+        .onHover { hovering = $0 }
+        .padding(.horizontal, 10)
+        .padding(.bottom, 10)
+        .padding(.top, 4)
+        .accessibilityLabel(L.get("Nav_Accounts"))
+        .accessibilityAddTraits(selected ? .isSelected : [])
     }
 }
 
 /// An image from the web, through VidFlow's own proxy settings, cached in memory.
 struct RemoteImage: View {
     let url: String?
+    /// Shown, faintly, until the picture arrives or if there isn't one.
+    var platform: Platform?
     @State private var image: NSImage?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private static let cache = NSCache<NSString, NSImage>()
 
@@ -81,7 +152,9 @@ struct RemoteImage: View {
         ZStack {
             Rectangle().fill(.quaternary)
             if let image {
-                Image(nsImage: image).resizable().aspectRatio(contentMode: .fill)
+                Image(nsImage: image).resizable().aspectRatio(contentMode: .fill).transition(.opacity)
+            } else if let platform, platform != .other {
+                Image(platform.assetName).resizable().aspectRatio(contentMode: .fit).frame(width: 22, height: 22).opacity(0.45)
             } else {
                 Image(systemName: "film").foregroundStyle(.tertiary)
             }
@@ -105,7 +178,7 @@ struct RemoteImage: View {
             }
             if let (data, _) = try? await HTTPClient.shared.data(for: req), let loaded = NSImage(data: data) {
                 Self.cache.setObject(loaded, forKey: url as NSString)
-                image = loaded
+                withAnimation(reduceMotion ? nil : .easeIn(duration: 0.2)) { image = loaded }
             }
         }
     }
@@ -115,7 +188,7 @@ struct RemoteImage: View {
 struct MessageBanner: View {
     let message: ComposerMessage
     var onLogin: (Platform) -> Void = { _ in }
-    var onDismiss: () -> Void = {}
+    var onDismiss: (() -> Void)?
     @Environment(AppModel.self) private var model
 
     var body: some View {
@@ -135,12 +208,15 @@ struct MessageBanner: View {
             if message.openComponents {
                 Button(L.get("Home_ComponentsAction")) { model.openSettings(.updates) }
             }
-            Button(action: onDismiss) { Image(systemName: "xmark") }
-                .buttonStyle(.borderless)
-                .accessibilityLabel(L.get("Common_Close"))
+            if let onDismiss {
+                Button(action: onDismiss) { Image(systemName: "xmark") }
+                    .buttonStyle(.borderless)
+                    .accessibilityLabel(L.get("Common_Close"))
+            }
         }
-        .padding(10)
-        .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 8))
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 10))
     }
 
     private var symbol: String {

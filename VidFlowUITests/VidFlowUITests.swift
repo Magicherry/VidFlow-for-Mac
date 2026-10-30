@@ -22,7 +22,7 @@ final class VidFlowUITests: XCTestCase {
     /// A bad state update at launch once made the app spin and crash before showing anything.
     func testLaunchesToANewDownloadAndStaysResponsive() {
         app.launch()
-        XCTAssertTrue(title("New download").waitForExistence(timeout: 15))
+        XCTAssertTrue(title("New Download").waitForExistence(timeout: 15))
         XCTAssertTrue(app.textFields["Video link"].exists)
         sleep(2)
         XCTAssertEqual(app.state, .runningForeground)
@@ -31,7 +31,7 @@ final class VidFlowUITests: XCTestCase {
 
     func testSidebarReachesEveryPage() {
         app.launch()
-        XCTAssertTrue(title("New download").waitForExistence(timeout: 15))
+        XCTAssertTrue(title("New Download").waitForExistence(timeout: 15))
         app.typeKey("2", modifierFlags: .command)
         XCTAssertTrue(title("Downloads").waitForExistence(timeout: 5))
         app.typeKey("3", modifierFlags: .command)
@@ -39,13 +39,13 @@ final class VidFlowUITests: XCTestCase {
         app.buttons["Accounts"].click()
         XCTAssertTrue(title("Accounts").waitForExistence(timeout: 5))
         app.typeKey("1", modifierFlags: .command)
-        XCTAssertTrue(title("New download").waitForExistence(timeout: 5))
+        XCTAssertTrue(title("New Download").waitForExistence(timeout: 5))
     }
 
     /// The sidebar list once jumped back to its first row whenever the window lost focus on the Accounts page.
     func testOpeningSettingsKeepsThePage() {
         app.launch()
-        XCTAssertTrue(title("New download").waitForExistence(timeout: 15))
+        XCTAssertTrue(title("New Download").waitForExistence(timeout: 15))
         app.buttons["Accounts"].click()
         XCTAssertTrue(title("Accounts").waitForExistence(timeout: 5))
         app.typeKey(",", modifierFlags: .command)

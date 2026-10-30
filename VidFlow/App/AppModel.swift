@@ -3,6 +3,9 @@ import Observation
 import SwiftUI
 import VidFlowCore
 
+/// How wide a page's column of content gets, so its parts line up however large the window is.
+let contentColumnWidth: CGFloat = 720
+
 enum SidebarItem: Hashable {
     case newDownload
     case downloads(DownloadStatusFilter)
@@ -25,6 +28,7 @@ final class AppModel {
             SettingsStore.shared.current = settings
             SettingsStore.shared.save()
             if settings.theme != oldValue.theme { applyTheme() }
+            if settings.language != oldValue.language { applyLanguageToSystem() }
             if settings.watchClipboard != oldValue.watchClipboard { clipboard.update(watching: settings.watchClipboard) }
         }
     }
@@ -48,6 +52,8 @@ final class AppModel {
     /// Set once the app is on its way out, so nothing restarts.
     var isTerminating = false
 
+    /// The language this run is in: it only changes with a restart.
+    let launchLanguage: String
     let vault: CookieVault
     let tools: ToolManager
     let downloads: DownloadManager
@@ -78,6 +84,7 @@ final class AppModel {
         if env["VIDFLOW_SKIP_FIRST_RUN"] == "1" { settings.firstRunCompleted = true }
         #endif
         self.settings = settings
+        launchLanguage = settings.language
         L.apply(language: settings.language)
         #if DEBUG
         if let language = env["VIDFLOW_LANGUAGE"] { L.apply(language: language) }
@@ -92,6 +99,7 @@ final class AppModel {
 
     /// Called once, when the app has finished launching.
     func start() {
+        applyLanguageToSystem()
         ProcessRunner.killOrphans()
         vault.closeSession() // Whatever the previous run left behind.
         applyTheme()
@@ -151,15 +159,29 @@ final class AppModel {
         accountsRevision += 1
     }
 
+    /// Macs name menus and system dialogs from this app's own language list, read at launch. VidFlow's own strings follow it
+    /// too, so the whole app changes language together.
+    func applyLanguageToSystem() {
+        switch settings.language {
+        case "zh": UserDefaults.standard.set(["zh-Hans"], forKey: "AppleLanguages")
+        case "en": UserDefaults.standard.set(["en"], forKey: "AppleLanguages")
+        default: UserDefaults.standard.removeObject(forKey: "AppleLanguages")
+        }
+        UserDefaults.standard.synchronize()
+    }
+
+    /// Reopens VidFlow once this instance has really gone, however long quitting takes, so the two never run downloads at once.
     func quitRelaunching() {
-        let url = Bundle.main.bundleURL
-        let config = NSWorkspace.OpenConfiguration()
-        config.createsNewApplicationInstance = true
-        // A small delay lets this instance finish quitting first, so the two never run downloads at once.
+        var open = "/usr/bin/open"
+        #if DEBUG
+        if let dir = ProcessInfo.processInfo.environment["VIDFLOW_DATA_DIR"] { open += " --env VIDFLOW_DATA_DIR='\(dir)'" }
+        #endif
         let task = Process()
         task.executableURL = URL(fileURLWithPath: "/bin/sh")
-        task.arguments = ["-c", "sleep 1; /usr/bin/open \"$0\"", url.path]
+        task.arguments = ["-c", "while kill -0 \"$1\" 2>/dev/null; do sleep 0.2; done; \(open) \"$0\"", Bundle.main.bundleURL.path,
+                          "\(ProcessInfo.processInfo.processIdentifier)"]
         try? task.run()
+        updates.isInstallingNow = true // Skips the question about running downloads: they continue after the restart.
         NSApp.terminate(nil)
     }
 }

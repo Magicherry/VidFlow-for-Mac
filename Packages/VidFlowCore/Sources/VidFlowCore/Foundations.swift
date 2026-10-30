@@ -91,13 +91,18 @@ public enum L {
                   let text = try? String(contentsOf: url, encoding: .utf8) else { continue }
             for line in text.split(whereSeparator: \.isNewline).dropFirst() {
                 let f = line.split(separator: "\t", omittingEmptySubsequences: false)
-                if f.count >= 3 { table[String(f[0])] = (unescape(f[1]), unescape(f[2])) }
+                if f.count >= 3 { table[String(f[0])] = (unescape(f[1]), chineseQuotes(unescape(f[2]))) }
             }
         }
         return table
     }()
 
     private static func unescape(_ s: Substring) -> String { s.replacingOccurrences(of: "\\n", with: "\n") }
+
+    /// The shared table quotes Chinese with corner brackets; on the Mac it's the mainland's usual marks throughout.
+    private static func chineseQuotes(_ s: String) -> String {
+        s.replacingOccurrences(of: "「", with: "“").replacingOccurrences(of: "」", with: "”")
+    }
 
     private static let chinese = Locked(Locale.preferredLanguages.first?.hasPrefix("zh") ?? false)
 

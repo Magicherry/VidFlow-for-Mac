@@ -49,7 +49,6 @@ Home_UrlPlaceholder	Paste video links or share text	粘贴视频链接或分享�
 Home_DropHint	Paste a link, or drag one here	粘贴链接，或将链接拖到这里
 Home_ClearResult	Clear	清除
 Home_OptionsToggle	Options	选项
-Home_ComponentsAction	Open Components	打开组件设置
 Home_OpenSettings	Open Settings	打开设置
 Accounts_Description	Sign in for higher quality and restricted videos. Your sign-in stays on this Mac.	登录后可下载更高画质和受限内容，登录信息仅保存在本机。
 Login_StoredLocally	Your sign-in stays on this Mac, in your Keychain	登录信息仅保存在本机的钥匙串中
@@ -63,12 +62,10 @@ Tray_Idle	No active downloads	没有进行中的下载
 Update_RolledBack	The last update to {0} didn't complete; you're on {1}.	上次更新到 {0} 未完成，当前为 {1}。
 Update_BadSignature	The update isn't signed by the VidFlow developer: {0}	更新包未通过开发者签名校验：{0}
 Update_DevBuild	this build isn't signed with a Developer ID, so it can't verify updates. Download the new version manually.	当前版本未使用 Developer ID 签名，无法校验更新，请手动下载新版本。
-Update_OpenReleases	Open Releases	打开发布页
 Update_Ready	Version {0} is downloaded: install now, or it installs by itself when you quit VidFlow	版本 {0} 已下载：可立即安装，退出 VidFlow 时也会自动安装
 Update_InstallBody	VidFlow will quit, update, and reopen in a few seconds.	VidFlow 将退出并在几秒内完成更新后自动重新打开。
 Update_InstallBodyActive	VidFlow will quit, update, and reopen in a few seconds. {0} downloads will pause and continue automatically afterwards.	VidFlow 将退出并在几秒内完成更新后自动重新打开。{0} 个正在进行的下载会暂停，更新后自动继续。
 Update_MoveToApplications	Move VidFlow to the Applications folder to install updates here.	请将 VidFlow 移到“应用程序”文件夹后再在此安装更新。
-About_RunWizard	Run the setup wizard again	重新运行首次设置向导
 About_Website	Project page	项目主页
 Wizard_WelcomeBody	VidFlow uses these free tools to download and process videos (about 150 MB, from their official releases).	VidFlow 用这些免费工具下载和处理视频（约 150 MB，来自其官方发布页）。
 Wizard_AccountsBody	Optional: public videos download without signing in. You can also sign in later on the Accounts page.	可选。公开视频无需登录，也可以稍后在“账号”页面中登录。
@@ -130,7 +127,6 @@ Browser_Opera	Opera	Opera
 Browser_Vivaldi	Vivaldi	Vivaldi
 Menu_About	About VidFlow	关于 VidFlow
 Settings_Updates	Updates	更新
-Home_MoreOptions	More options	更多选项
 Options_Advanced	Audio and advanced	音频与高级
 Downloads_More	Filter and more	筛选与更多
 Status_DiskFull	Paused: not enough disk space ({0} free)	已暂停：磁盘空间不足（剩余 {0}）
@@ -145,7 +141,50 @@ Home_DuplicateTitle	Already downloaded	已经下载过
 Home_DuplicateBody	{0} of these already exist with the same options. Downloading again replaces the files.	其中 {0} 项已用相同选项下载过。重新下载会替换原文件。
 Home_DownloadAgain	Download Again	重新下载
 Home_SkipDuplicates	Skip	跳过
-About_ExportDiagnostics	Export diagnostics…	导出诊断信息…
 About_ExportDiagnosticsHelp	Logs and settings for a problem report, with links' tokens, passwords and your user name taken out	用于反馈问题的日志和设置，其中的链接令牌、密码和用户名已移除
-About_RepairComponents	Repair components	修复组件
 About_RepairComponentsHelp	Downloads VidFlow's own copies of the components again	重新下载 VidFlow 自带的组件
+Accounts_NotSignedIn	Not signed in	未登录
+Accounts_SignedInCount	{0} signed in	已登录 {0} 个
+Downloads_ThumbnailSize	Thumbnail Size	缩略图大小
+Downloads_ThumbnailSmall	Small	小
+Downloads_ThumbnailMedium	Medium	中
+Downloads_ThumbnailLarge	Large	大
+Nav_Home	New Download	新建下载
+Nav_Downloads	Downloads	下载
+Nav_Templates	Templates	模板
+Download_Start	Download	开始下载
+Download_Selected	Download {0} Selected	下载选中的 {0} 个
+Downloads_ClearFinished	Clear Finished	清除已结束
+Downloads_PauseAll	Pause All	全部暂停
+Downloads_ResumeAll	Resume All	全部继续
+Downloads_Progress	Progress	进度
+Home_LoginNow	Sign In	立即登录
+Home_ViewDownloads	View Downloads	查看下载
+Home_ComponentsAction	Open Settings	打开设置
+Home_MoreOptions	More Options	更多选项
+Account_Login	Sign In	登录
+Account_Logout	Sign Out	退出登录
+Action_CopyError	Copy Error Details	拷贝错误详情
+Action_Prioritize	Download Next	优先下载
+Action_Remove	Remove from List	从列表中移除
+About_OpenData	Open Data Folder	打开数据文件夹
+About_OpenLogs	Open Log Folder	打开日志文件夹
+About_RunWizard	Run Setup Again	重新运行首次设置
+About_ExportDiagnostics	Export Diagnostics…	导出诊断信息…
+About_RepairComponents	Repair Components	修复组件
+Playlist_SelectAll	Select All	全选
+Playlist_SelectNone	Select None	全不选
+Settings_CheckUpdate	Check for Updates	检查更新
+Settings_RestartNow	Restart Now	立即重启
+Template_New	New Template	新建模板
+Template_SaveAs	Save as Template	另存为模板
+Template_SaveAsTitle	Save as Template	另存为模板
+Template_SetDefault	Set as Default	设为默认
+Tools_UpdateAll	Update All	全部更新
+Update_Download	Download Update	下载更新
+Update_InstallNow	Install Now	立即安装
+Update_OpenReleases	Open Releases	打开发布页
+Login_QrRefresh	Get a New Code	刷新二维码
+Login_QrRetry	Try Again	重试
+Wizard_InstallAll	Install Components	一键安装组件
+Wizard_Next	Next	下一步

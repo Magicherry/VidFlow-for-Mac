@@ -11,7 +11,7 @@ struct VidFlowApp: App {
         Window("VidFlow", id: "main") {
             MainView()
                 .environment(model)
-                .frame(minWidth: 760, minHeight: 480)
+                .frame(minWidth: 800, minHeight: 500)
         }
         .defaultSize(width: 1080, height: 700)
         .commands { AppCommands(model: model) }
@@ -100,7 +100,7 @@ struct AppCommands: Commands {
 
     var body: some Commands {
         CommandGroup(replacing: .appInfo) {
-            Button(L.format("Menu_About")) { model.openSettings(.about) }
+            Button(L.get("Menu_About")) { model.openSettings(.about) }
         }
         CommandGroup(after: .appInfo) {
             Button(L.get("Settings_CheckUpdate")) {

@@ -428,7 +428,7 @@ public enum Format {
     /// Quality label with an approximate size: "1080p (Full HD) · ~120 MB".
     public static func quality(_ q: QualityOption) -> String {
         if let b = q.estimatedBytes, b > 0 {
-            return "\(height(q.height, fps: q.fps))  ·  \(L.format("Size_Approx", bytes(Double(b))))"
+            return "\(height(q.height, fps: q.fps)) · \(L.format("Size_Approx", bytes(Double(b))))"
         }
         return height(q.height, fps: q.fps)
     }
@@ -438,8 +438,8 @@ public enum Format {
 public enum DownloadLabels {
     /// "YouTube · MP4 · 1080p · P3".
     public static func label(_ r: DownloadRequest, partIndex: Int?) -> String {
-        let label = "\(UrlTools.detectPlatform(r.url).displayName)  ·  \(optionsLabel(r))"
-        return partIndex.map { "\(label)  ·  P\($0)" } ?? label
+        let label = "\(UrlTools.detectPlatform(r.url).displayName) · \(optionsLabel(r))"
+        return partIndex.map { "\(label) · P\($0)" } ?? label
     }
 
     /// "MP4 · 1080p · H.264", without the platform.

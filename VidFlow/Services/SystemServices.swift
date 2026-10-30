@@ -241,7 +241,10 @@ final class ComponentsModel {
     }
 
     var missing: [ComponentStatus] { components.filter { $0.state == .missing } }
-    var hasYtDlp: Bool { tools.path(.ytDlp) != nil }
+    var hasYtDlp: Bool {
+        _ = components.first?.state // Redraws whoever asks when an install finishes.
+        return tools.path(.ytDlp) != nil
+    }
 
     /// Reads the installed versions and, with `remote`, compares VidFlow's own copies with the latest releases.
     func refresh(remote: Bool) async {
@@ -416,7 +419,8 @@ final class UpdateModel {
             }
         } catch {
             Log.warn("Update check failed: \(error.localizedDescription)")
-            fail(error)
+            // No release published yet isn't worth a warning unless someone asked.
+            if !userInitiated, (error as? HTTPStatusError)?.code == 404 { set(.idle) } else { fail(error) }
         }
         busy = false
     }

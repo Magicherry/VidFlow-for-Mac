@@ -1,5 +1,6 @@
 import AppKit
 import Observation
+import SwiftUI
 import VidFlowCore
 
 /// One link of a multi-link paste: parsed in the background, then shown with a checkbox.
@@ -70,6 +71,8 @@ final class ComposerModel {
     var urlText = ""
     var result: ComposerResult = .empty
     var message: ComposerMessage?
+    /// Brief confirmation that downloads were added.
+    var toast: String?
     /// Template the current task started from; `options` is a copy, so a per-task change never touches the template.
     var template: DownloadTemplate
     var options: DownloadTemplate
@@ -110,6 +113,22 @@ final class ComposerModel {
         options = t
     }
 
+    /// Follows what happened on the Templates page meanwhile: an edited or deleted template, a new default. Changes the
+    /// user made for this download are kept, and a download being set up doesn't change template under them.
+    func syncWithTemplates() {
+        let store = app.templates
+        if let fresh = store.find(template.id) {
+            if fresh != template {
+                if !isModified { options = fresh }
+                template = fresh
+            }
+        } else {
+            use(store.defaultTemplate(app.settings))
+            return
+        }
+        if result == .empty, !isModified { use(store.defaultTemplate(app.settings)) }
+    }
+
     func saveAsTemplate(name: String) {
         var copy = options
         copy.id = UUID()
@@ -129,22 +148,6 @@ final class ComposerModel {
         }
         urlText = urls.joined(separator: " ")
         parse()
-    }
-
-    func paste() {
-        let text = NSPasteboard.general.string(forType: .string)
-        if UrlTools.extractURLs(text).isEmpty {
-            message = ComposerMessage(kind: .info, text: L.get("Home_ClipboardEmpty"))
-        } else if let text {
-            load(text: text)
-        }
-    }
-
-    /// A supported link already on the clipboard saves a step when the page opens.
-    func prefillFromClipboard() {
-        guard urlText.isEmpty, let url = UrlTools.extractURL(NSPasteboard.general.string(forType: .string)),
-              UrlTools.isSupported(url) else { return }
-        urlText = url
     }
 
     func clear() {
@@ -336,7 +339,10 @@ final class ComposerModel {
         guard let completed = confirmDuplicates else { return }
         confirmDuplicates = nil
         if downloadAgain { overwriteURLs = completed } else { skipURLs.formUnion(completed) }
-        if pendingRequests().allSatisfy({ skipURLs.contains($0.request.url) }) { return }
+        if pendingRequests().allSatisfy({ skipURLs.contains($0.request.url) }) {
+            message = ComposerMessage(kind: .info, text: L.get("Home_AlreadyQueued"), showDownloads: true)
+            return
+        }
         confirmCount()
     }
 
@@ -360,6 +366,7 @@ final class ComposerModel {
         result = .empty
         batch = []
         urlText = ""
-        message = ComposerMessage(kind: .success, title: L.get("Home_Added"), text: added, showDownloads: true)
+        message = nil
+        withAnimation(.easeOut(duration: 0.2)) { toast = added }
     }
 }

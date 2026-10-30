@@ -105,7 +105,7 @@ extension VidFlowCoreTests {
             #expect(Format.height(2160) == "2160p (4K)")
             #expect(Format.height(480) == "480p")
             #expect(Format.quality(QualityOption(height: 720, fps: 30, estimatedBytes: nil)) == "720p (HD)")
-            #expect(Format.quality(QualityOption(height: 720, fps: 30, estimatedBytes: 5 * 1024 * 1024)) == "720p (HD)  ·  ~5.0 MB")
+            #expect(Format.quality(QualityOption(height: 720, fps: 30, estimatedBytes: 5 * 1024 * 1024)) == "720p (HD) · ~5.0 MB")
         }
     }
 
@@ -115,9 +115,9 @@ extension VidFlowCoreTests {
             let req = DownloadRequest(url: "https://www.bilibili.com/video/BV1", mode: "mp3", maxHeight: 0, writeSubtitles: false, outputFolder: "o")
             defer { L.apply(language: "en") }
             L.apply(language: "en")
-            #expect(DownloadLabels.label(req, partIndex: 3) == "Bilibili  ·  MP3 audio  ·  P3")
+            #expect(DownloadLabels.label(req, partIndex: 3) == "Bilibili · MP3 audio · P3")
             L.apply(language: "zh")
-            #expect(DownloadLabels.label(req, partIndex: nil) == "哔哩哔哩  ·  MP3 音频")
+            #expect(DownloadLabels.label(req, partIndex: nil) == "哔哩哔哩 · MP3 音频")
             var done = DownloadRecord(request: req, title: "t")
             done.state = .completed
             done.filePath = "/Users/me/Downloads/x.mp3" // the Windows test used C:\a\x.mp3

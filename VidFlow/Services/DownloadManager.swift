@@ -105,6 +105,8 @@ final class DownloadItem: Identifiable {
 @Observable
 final class DownloadManager {
     private(set) var items: [DownloadItem] = []
+    /// Goes up with each download added, for whatever wants to mark the moment.
+    private(set) var addedCount = 0
 
     @ObservationIgnored private var saveTask: Task<Void, Never>?
     @ObservationIgnored private var timer: Timer?
@@ -182,6 +184,7 @@ final class DownloadManager {
     /// Adds a download. Title/thumbnail may be provisional (batch links): yt-dlp fills them in.
     func enqueue(_ request: DownloadRequest, title: String, thumbnailURL: String?, partIndex: Int? = nil) {
         items.insert(DownloadItem(DownloadRecord(request: request, title: title, thumbnailURL: thumbnailURL, partIndex: partIndex)), at: 0)
+        addedCount += 1
         changed()
     }
 
@@ -282,8 +285,10 @@ final class DownloadManager {
     private func cleanUp(_ item: DownloadItem) {
         guard let path = item.expectedPath else { return }
         let keepThumbnails = item.request.isCover
-        Task.detached(priority: .utility) {
+        Task {
             try? await Task.sleep(for: .seconds(1.5))
+            // Retried meanwhile: those files are in use again.
+            guard item.state == .canceled || item.state == .failed else { return }
             let removed = PartialFiles.remove(finalPath: path, keepThumbnails: keepThumbnails)
             if removed > 0 { Log.info("Removed \(removed) working files of a canceled download") }
         }
@@ -510,6 +515,8 @@ final class DownloadManager {
     }
 
     private func apply(_ p: DownloadProgress, to item: DownloadItem) {
+        // The old file has been replaced; a pause or retry from here must continue, not start over again.
+        item.request.overwrite = false
         if p.processing {
             item.state = .processing
             item.speed = 0
@@ -614,8 +621,13 @@ final class DockProgress {
         last = state
         let tile = NSApp.dockTile
         tile.badgeLabel = active > 0 ? "\(active)" : nil
-        view.progress = active > 0 && !indeterminate ? percent / 100 : nil
-        if tile.contentView !== view { tile.contentView = view }
+        if active > 0 {
+            view.frame = NSRect(origin: .zero, size: tile.size)
+            view.progress = indeterminate ? nil : percent / 100
+            tile.contentView = view
+        } else {
+            tile.contentView = nil // Back to the plain icon.
+        }
         tile.display()
     }
 

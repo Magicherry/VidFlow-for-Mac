@@ -6,6 +6,18 @@ import VidFlowCore
 
 struct SettingsView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    /// The window fits the pane it shows; what a pane unfolds beyond that scrolls.
+    private var paneHeight: CGFloat {
+        switch model.settingsTab {
+        case .general: 440
+        case .downloads: 620
+        case .network: 300
+        case .updates: 500
+        case .about: 500
+        }
+    }
 
     var body: some View {
         @Bindable var model = model
@@ -16,8 +28,8 @@ struct SettingsView: View {
             UpdatesPane().tabItem { Label(L.get("Settings_Updates"), systemImage: "arrow.triangle.2.circlepath") }.tag(SettingsTab.updates)
             AboutPane().tabItem { Label(L.get("Settings_About"), systemImage: "info.circle") }.tag(SettingsTab.about)
         }
-        .frame(width: 540)
-        .frame(minHeight: 420, idealHeight: 520)
+        .frame(width: 540, height: paneHeight)
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: model.settingsTab)
     }
 }
 
@@ -33,7 +45,6 @@ private struct Described<Content: View>: View {
 
 private struct GeneralPane: View {
     @Environment(AppModel.self) private var model
-    @State private var needsRestart = false
     @State private var loginItem = LoginItem.isOn
     @State private var loginStatus = LoginItem.status
     @State private var notificationsDenied = false
@@ -42,15 +53,12 @@ private struct GeneralPane: View {
         @Bindable var model = model
         Form {
             Section {
-                Picker(L.get("Settings_Language"), selection: Binding(get: { model.settings.language }, set: {
-                    model.settings.language = $0
-                    needsRestart = true
-                })) {
+                Picker(L.get("Settings_Language"), selection: $model.settings.language) {
                     Text(L.get("Settings_LanguageSystem")).tag("")
                     Text("简体中文").tag("zh")
                     Text("English").tag("en")
                 }
-                if needsRestart {
+                if model.settings.language != model.launchLanguage {
                     HStack {
                         Text(L.get("Settings_RestartMessage")).font(.caption).foregroundStyle(.secondary)
                         Spacer()
@@ -273,7 +281,7 @@ private struct NetworkPane: View {
                             if !model.settings.cookiesFile.isEmpty {
                                 Button(L.get("Common_Clear")) { model.settings.cookiesFile = "" }
                             }
-                            Button(L.get("Settings_ChooseFile")) {
+                            Button(L.get("Settings_Choose")) {
                                 if let file = Pickers.file() { model.settings.cookiesFile = file }
                             }
                         }
@@ -343,6 +351,9 @@ struct AccountRows: View {
                 }
                 Spacer()
                 if signedIn {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(.green)
+                        .accessibilityLabel(L.get("Wizard_SignedIn"))
                     Button(L.get("Account_Logout")) { Task { await model.signOut(p) } }
                 } else {
                     Button(L.get("Account_Login")) { Task { await LoginWindowController.show(p) } }
@@ -357,13 +368,13 @@ struct AccountsView: View {
         Form {
             Section {
                 AccountRows()
-            } header: {
-                Text(L.get("Accounts_Description"))
             } footer: {
-                Text(L.get("Settings_KeychainNote")).font(.caption).foregroundStyle(.secondary)
+                Text(L.get("Accounts_Description")).font(.caption).foregroundStyle(.secondary)
             }
         }
         .formStyle(.grouped)
+        .frame(maxWidth: contentColumnWidth)
+        .frame(maxWidth: .infinity)
         .navigationTitle(L.get("Nav_Accounts"))
     }
 }
@@ -444,6 +455,9 @@ private struct ComponentsSections: View {
                 Described(description: L.get("Settings_AutoUpdateDescription")) {
                     Toggle(L.get("Settings_AutoUpdate"), isOn: $model.settings.autoUpdateComponents)
                 }
+                Button(L.get("About_RepairComponents")) { Task { await components.repair() } }
+                    .disabled(components.installing || components.checking)
+                    .help(L.get("About_RepairComponentsHelp"))
             }
         }
         .task { await components.refresh(remote: components.lastCheck == nil) }
@@ -579,19 +593,21 @@ private struct AboutPane: View {
     var body: some View {
         Form {
             Section {
-                HStack(spacing: 14) {
+                VStack(spacing: 6) {
                     Image(nsImage: NSApp.applicationIconImage)
                         .resizable()
-                        .frame(width: 64, height: 64)
+                        .frame(width: 72, height: 72)
                         .accessibilityHidden(true)
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text("VidFlow").font(.title2.weight(.semibold))
-                        Text(L.format("About_Version", UpdateModel.currentVersion)).foregroundStyle(.secondary).textSelection(.enabled)
-                        Text(L.get("About_Description")).font(.callout).foregroundStyle(.secondary)
-                    }
+                    Text("VidFlow").font(.title2.weight(.semibold))
+                    Text(L.format("About_Version", UpdateModel.currentVersion)).font(.callout).foregroundStyle(.secondary).textSelection(.enabled)
+                    Text(L.get("About_Description")).font(.callout).foregroundStyle(.secondary).multilineTextAlignment(.center)
+                    Link(L.get("About_Website"), destination: URL(string: "https://github.com/Magicherry/VidFlow-for-Mac")!)
+                        .font(.callout)
+                        .padding(.top, 2)
                 }
-                .padding(.vertical, 4)
-                Link(L.get("About_Website"), destination: URL(string: "https://github.com/Magicherry/VidFlow-for-Mac")!)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 6)
+            } footer: {
                 Text(L.get("About_Disclaimer")).font(.caption).foregroundStyle(.secondary)
             }
             Section(L.get("About_Troubleshoot")) {
@@ -599,9 +615,6 @@ private struct AboutPane: View {
                 Button(L.get("About_OpenData")) { Finder.reveal(AppPaths.dataDir) }
                 Button(L.get("About_ExportDiagnostics")) { Task { await exportDiagnostics() } }
                     .help(L.get("About_ExportDiagnosticsHelp"))
-                Button(L.get("About_RepairComponents")) { Task { await model.components.repair() } }
-                    .disabled(model.components.installing || model.components.checking)
-                    .help(L.get("About_RepairComponentsHelp"))
                 Button(L.get("About_RunWizard")) {
                     model.showFirstRun = true
                     model.showMainWindow()
@@ -666,7 +679,7 @@ struct FirstRunView: View {
                 case 1:
                     Section {
                         LabeledContent((model.settings.downloadFolder as NSString).abbreviatingWithTildeInPath) {
-                            Button(L.get("Wizard_Change")) {
+                            Button(L.get("Settings_Choose")) {
                                 if let folder = Pickers.folder(startingAt: model.settings.downloadFolder) { model.settings.downloadFolder = folder }
                             }
                         }

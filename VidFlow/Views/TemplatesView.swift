@@ -11,19 +11,22 @@ struct TemplatesView: View {
     var body: some View {
         HSplitView {
             List(selection: $selection) {
-                Section(L.get("Templates_Mine")) {
-                    if model.templates.custom.isEmpty {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(L.get("Templates_Empty"))
-                            Text(L.get("Templates_EmptyDescription")).font(.caption).foregroundStyle(.secondary)
-                        }
+                if !model.templates.custom.isEmpty {
+                    Section(L.get("Templates_Mine")) {
+                        ForEach(model.templates.custom) { row($0) }
                     }
-                    ForEach(model.templates.custom) { row($0) }
                 }
-                Section(L.get("Templates_BuiltIn")) {
+                Section {
                     ForEach(TemplateStore.builtIns) { row($0) }
+                } header: {
+                    Text(L.get("Templates_BuiltIn"))
+                } footer: {
+                    if model.templates.custom.isEmpty {
+                        Text(L.get("Templates_EmptyDescription")).font(.caption).foregroundStyle(.secondary)
+                    }
                 }
             }
+            .listStyle(.inset)
             .frame(minWidth: 230, idealWidth: 280, maxWidth: 360)
             .contextMenu(forSelectionType: UUID.self) { ids in
                 if let id = ids.first, let t = model.templates.find(id) { menu(t) }
@@ -41,6 +44,7 @@ struct TemplatesView: View {
             .frame(minWidth: 380, maxWidth: .infinity, maxHeight: .infinity)
         }
         .navigationTitle(L.get("Nav_Templates"))
+        .onAppear { if selected == nil { selection = model.templates.defaultTemplate(model.settings).id } }
         .toolbar {
             ToolbarItemGroup(placement: .primaryAction) {
                 Button(L.get("Template_New"), systemImage: "plus") {
@@ -140,6 +144,8 @@ private struct TemplateEditor: View {
             .disabled(template.isBuiltIn)
         }
         .formStyle(.grouped)
+        .frame(maxWidth: contentColumnWidth)
+        .frame(maxWidth: .infinity)
         .id(template.id)
     }
 }

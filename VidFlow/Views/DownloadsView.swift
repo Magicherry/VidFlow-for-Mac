@@ -7,6 +7,7 @@ struct DownloadsView: View {
     @State private var selection = Set<UUID>()
     @State private var platform: Platform?
     @State private var query = ""
+    @AppStorage("downloadThumbnailSize") private var thumbnailSize = ThumbnailSize.medium
     @State private var sortOrder = [DownloadSort(field: .added, order: .reverse)]
 
     private var downloads: DownloadManager { model.downloads }
@@ -51,7 +52,7 @@ struct DownloadsView: View {
     private func table(_ rows: [DownloadItem]) -> some View {
         Table(rows, selection: $selection, sortOrder: $sortOrder) {
             TableColumn(L.get("Downloads_Name"), sortUsing: DownloadSort(field: .name)) { item in
-                NameCell(item: item)
+                NameCell(item: item, thumbnailWidth: thumbnailSize.width)
             }
             .width(min: 220, ideal: 360)
             TableColumn(L.get("Downloads_Status"), sortUsing: DownloadSort(field: .status)) { item in
@@ -59,14 +60,16 @@ struct DownloadsView: View {
             }
             .width(min: 180, ideal: 260)
         }
+        .tableStyle(.inset(alternatesRowBackgrounds: false))
         .contextMenu(forSelectionType: UUID.self) { ids in
             RowMenu(items: downloads.items.filter { ids.contains($0.id) })
         } primaryAction: { ids in
             for item in downloads.items where ids.contains(item.id) { open(item) }
         }
         .onDeleteCommand {
-            selectedItems.forEach(downloads.remove)
-            selection = []
+            let gone = selectedItems.filter(\.canRemove)
+            gone.forEach(downloads.remove)
+            selection.subtract(gone.map(\.id))
         }
         .onKeyPress(.space) {
             let items = selectedItems
@@ -103,6 +106,12 @@ struct DownloadsView: View {
                     ForEach(Platform.supported) { Text($0.displayName).tag(Platform?.some($0)) }
                 }
                 .pickerStyle(.inline)
+                Picker(L.get("Downloads_ThumbnailSize"), selection: $thumbnailSize) {
+                    Text(L.get("Downloads_ThumbnailSmall")).tag(ThumbnailSize.small)
+                    Text(L.get("Downloads_ThumbnailMedium")).tag(ThumbnailSize.medium)
+                    Text(L.get("Downloads_ThumbnailLarge")).tag(ThumbnailSize.large)
+                }
+                .pickerStyle(.inline)
                 Divider()
                 Button(L.get("Downloads_ClearFinished")) { downloads.clearFinished() }
                     .disabled(!downloads.canClearFinished)
@@ -136,12 +145,12 @@ nonisolated struct DownloadSort: SortComparator, Hashable {
 }
 
 extension DownloadItem {
-    /// The status line with speed and time left, so one column says it all.
-    var liveStatus: String {
-        var parts = [statusText]
+    /// Speed and time left, while there are any.
+    var liveFigures: String? {
+        var parts: [String] = []
         if speed > 0 { parts.append("\(Format.bytes(speed))/s") }
         if eta > 0 { parts.append(L.format("Status_Remaining", Format.duration(eta))) }
-        return parts.joined(separator: " · ")
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 
     var addedAt: Date { createdAt }
@@ -169,14 +178,28 @@ extension DownloadItem {
     }
 }
 
+/// How big the list's thumbnails are; 16:9, by width.
+enum ThumbnailSize: String {
+    case small, medium, large
+
+    var width: CGFloat {
+        switch self {
+        case .small: 56
+        case .medium: 96
+        case .large: 160
+        }
+    }
+}
+
 private struct NameCell: View {
     let item: DownloadItem
+    let thumbnailWidth: CGFloat
 
     var body: some View {
         HStack(spacing: 10) {
-            RemoteImage(url: item.thumbnailURL)
-                .frame(width: 56, height: 32)
-                .clipShape(RoundedRectangle(cornerRadius: 4))
+            RemoteImage(url: item.thumbnailURL, platform: item.platform)
+                .frame(width: thumbnailWidth, height: thumbnailWidth * 9 / 16)
+                .clipShape(RoundedRectangle(cornerRadius: thumbnailWidth > 100 ? 10 : 6))
             VStack(alignment: .leading, spacing: 1) {
                 Text(item.title).lineLimit(1).help(item.title)
                 Text(item.label).font(.caption).foregroundStyle(.secondary).lineLimit(1)
@@ -188,8 +211,39 @@ private struct NameCell: View {
 
 private struct StatusCell: View {
     let item: DownloadItem
+    @Environment(AppModel.self) private var model
 
     var body: some View {
+        HStack(spacing: 10) {
+            status
+            Spacer(minLength: 0)
+            rowAction
+        }
+    }
+
+    /// The one thing most likely wanted on this row, as in Safari's download list.
+    @ViewBuilder private var rowAction: some View {
+        let downloads = model.downloads
+        if item.canPause {
+            actionButton("Action_Pause", "pause.fill") { downloads.pause(item) }
+        } else if item.canResume {
+            actionButton("Action_Resume", "play.fill") { downloads.resume(item) }
+        } else if item.canRetry {
+            actionButton(item.state == .completed ? "Action_Redownload" : "Action_Retry", "arrow.clockwise") { downloads.retry(item) }
+        } else if item.state == .completed {
+            actionButton("Menu_ShowInFinder", "magnifyingglass") { Finder.reveal(item.existingFile ?? item.folder) }
+        }
+    }
+
+    private func actionButton(_ key: String, _ symbol: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) { Image(systemName: symbol).imageScale(.small) }
+            .buttonStyle(.borderless)
+            .foregroundStyle(.secondary)
+            .help(L.get(key))
+            .accessibilityLabel(L.get(key))
+    }
+
+    private var status: some View {
         VStack(alignment: .leading, spacing: 3) {
             switch item.state {
             case .downloading, .paused:
@@ -206,12 +260,20 @@ private struct StatusCell: View {
                     Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(item.fileMissing ? .orange : .red).accessibilityHidden(true)
                 } else if item.state == .completed {
                     Image(systemName: "checkmark.circle.fill").foregroundStyle(.green).accessibilityHidden(true)
+                        .symbolEffect(.bounce, value: item.state == .completed)
                 }
-                Text(item.fileMissing ? L.get("Status_FileMissing") : item.state == .completed ? L.get("Status_Completed") : item.liveStatus)
+                Text(item.fileMissing ? L.get("Status_FileMissing") : item.state == .completed ? L.get("Status_Completed") : item.statusText)
                     .font(.caption)
                     .foregroundStyle(item.state == .failed ? AnyShapeStyle(.red) : AnyShapeStyle(.secondary))
                     .lineLimit(1)
                     .help(item.statusText)
+                Spacer(minLength: 8)
+                if let figures = item.liveFigures {
+                    Text(figures)
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
             }
         }
         .accessibilityElement(children: .ignore)
@@ -282,15 +344,15 @@ private struct DownloadInspector: View {
         if items.count == 1, let item = items.first {
             Form {
                 Section {
-                    RemoteImage(url: item.thumbnailURL)
+                    RemoteImage(url: item.thumbnailURL, platform: item.platform)
                         .aspectRatio(16 / 9, contentMode: .fit)
-                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
                     Text(item.title).fontWeight(.semibold).textSelection(.enabled)
                 }
                 Section {
                     LabeledContent(L.get("Downloads_Status"), value: item.stateLabel)
                     if item.isActive || item.state == .paused {
-                        LabeledContent("%", value: String(format: "%.1f", item.progress))
+                        LabeledContent(L.get("Downloads_Progress"), value: String(format: "%.1f%%", item.progress))
                     }
                     if item.totalBytes > 0, item.isRunning {
                         LabeledContent(L.get("Downloads_Size"), value: "\(Format.bytes(Double(item.downloadedBytes))) / \(Format.bytes(Double(item.totalBytes)))")
