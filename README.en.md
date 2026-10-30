@@ -4,7 +4,7 @@ The native macOS version of [VidFlow](https://github.com/Magicherry/VidFlow): pa
 
 [简体中文](README.md) · English
 
-> **Beta.** Current builds aren't notarized by Apple and can't install updates by themselves yet. Douyin, Weibo, RedNote and account sign-in haven't been verified with real links and accounts, and may not work.
+> **Please note:** Current builds aren't notarized by Apple and can't install updates by themselves yet. Douyin, Weibo, RedNote and account sign-in haven't been verified with real links and accounts, and may not work.
 
 ## Features
 

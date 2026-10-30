@@ -17,8 +17,13 @@ DEVELOPER_ID="Developer ID Application: 姓名 (TEAMID)" NOTARY_PROFILE=vidflow 
 
 `.github/workflows/macos.yml` 平时推送不运行。测试和构建要在 Actions 页面手动触发；推送 `v*` 标签时签名、公证并创建 Release，这一步不会先跑测试，发布前请自行运行。需要的 secrets：
 `DEVELOPER_ID_P12_BASE64`、`DEVELOPER_ID_P12_PASSWORD`、`DEVELOPER_ID_NAME`、`APPLE_ID`、`APPLE_TEAM_ID`、`APPLE_APP_PASSWORD`。
+配好后还要把仓库变量 `DEVELOPER_ID_READY` 设为 `true`，否则标签不会触发发布。
 
 测试和构建部分已在 GitHub 上跑通；签名、公证和发布部分还没有运行过。
+
+## 未签名发布
+
+没有证书时，运行 `scripts/build-release.sh <版本>`，把清单提交到仓库根目录，再用 `gh release create v<版本> dist/VidFlow-* aria2-<版本>.tar.xz --latest` 手动发布。这样的版本未经公证，用户第一次打开时要到“隐私与安全性”里点“仍要打开”，发布说明里要写明。
 
 ## 与 Windows 版的关系
 

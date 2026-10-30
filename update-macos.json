@@ -1,6 +1,6 @@
 {
   "version": "1.0.1",
-  "url": "https://github.com/Magicherry/VidFlow-for-Mac/releases/download/beta-1.0.1-1/VidFlow-1.0.1-macos.zip",
+  "url": "https://github.com/Magicherry/VidFlow-for-Mac/releases/download/v1.0.1/VidFlow-1.0.1-macos.zip",
   "sha256": "abb2ee25d9776d93943a9144006f4dab9fba0936a92ea00817eb328107c8d582",
   "size": 5240296,
   "notes": "- 添加开源许可和第三方声明，可在“关于”中查看。\n- App 现在能在有新版本时提示你（仍需手动下载安装）。",
