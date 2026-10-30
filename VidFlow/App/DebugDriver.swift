@@ -170,7 +170,6 @@ final class DebugDriver {
         let t1 = Date()
         let filter = DownloadFilter(query: "99")
         let shown = downloads.items.filter { filter.matches(state: $0.state, title: $0.title, url: $0.request.url, platform: $0.platform) }
-            .sorted(using: [DownloadSort(field: .added, order: .reverse)])
         let t2 = Date()
         let records = downloads.items.map(\.record)
         DownloadStore.save(records)

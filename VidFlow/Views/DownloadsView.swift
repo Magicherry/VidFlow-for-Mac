@@ -8,7 +8,6 @@ struct DownloadsView: View {
     @State private var platform: Platform?
     @State private var query = ""
     @AppStorage("downloadThumbnailSize") private var thumbnailSize = ThumbnailSize.medium
-    @State private var sortOrder = [DownloadSort(field: .added, order: .reverse)]
 
     private var downloads: DownloadManager { model.downloads }
 
@@ -16,8 +15,8 @@ struct DownloadsView: View {
 
     private var shown: [DownloadItem] {
         let filter = self.filter
+        // The list is kept newest first.
         return downloads.items.filter { filter.matches(state: $0.state, title: $0.title, url: $0.request.url, platform: $0.platform) }
-            .sorted(using: sortOrder)
     }
 
     private var selectedItems: [DownloadItem] { downloads.items.filter { selection.contains($0.id) } }
@@ -31,7 +30,7 @@ struct DownloadsView: View {
                                        systemImage: nothing ? "arrow.down.circle" : "magnifyingglass",
                                        description: Text(L.get(nothing ? "Downloads_EmptyBody" : "Downloads_NoMatchBody")))
             } else {
-                table(rows)
+                list(rows)
             }
         }
         .navigationTitle(L.get("Nav_Downloads"))
@@ -49,18 +48,17 @@ struct DownloadsView: View {
         return active > 0 ? L.format("Tray_Tooltip", active, Int(downloads.overallProgress)) : ""
     }
 
-    private func table(_ rows: [DownloadItem]) -> some View {
-        Table(rows, selection: $selection, sortOrder: $sortOrder) {
-            TableColumn(L.get("Downloads_Name"), sortUsing: DownloadSort(field: .name)) { item in
-                NameCell(item: item, thumbnailWidth: thumbnailSize.width)
+    private func list(_ rows: [DownloadItem]) -> some View {
+        List(selection: $selection) {
+            if status == .all {
+                section(.active, rows)
+                section(.failed, rows)
+                section(.completed, rows)
+            } else {
+                ForEach(rows) { DownloadRow(item: $0, thumbnailWidth: thumbnailSize.width) }
             }
-            .width(min: 220, ideal: 360)
-            TableColumn(L.get("Downloads_Status"), sortUsing: DownloadSort(field: .status)) { item in
-                StatusCell(item: item)
-            }
-            .width(min: 180, ideal: 260)
         }
-        .tableStyle(.inset(alternatesRowBackgrounds: false))
+        .listStyle(.inset)
         .contextMenu(forSelectionType: UUID.self) { ids in
             RowMenu(items: downloads.items.filter { ids.contains($0.id) })
         } primaryAction: { ids in
@@ -78,6 +76,18 @@ struct DownloadsView: View {
                 if item.canPause { downloads.pause(item) } else if item.canResume { downloads.resume(item) }
             }
             return .handled
+        }
+    }
+
+    /// One status group, under a heading with its count; nothing when it's empty.
+    @ViewBuilder private func section(_ group: DownloadStatusFilter, _ rows: [DownloadItem]) -> some View {
+        let members = rows.filter { DownloadFilter.group(of: $0.state) == group }
+        if !members.isEmpty {
+            Section {
+                ForEach(members) { DownloadRow(item: $0, thumbnailWidth: thumbnailSize.width) }
+            } header: {
+                Text("\(L.get("Downloads_Filter\(group.rawValue)")) \(members.count)")
+            }
         }
     }
 
@@ -101,46 +111,38 @@ struct DownloadsView: View {
                     }
                 }
                 .pickerStyle(.inline)
+                .labelsHidden()
+                Divider()
+                Button(L.get("Downloads_ClearFinished")) { downloads.clearFinished() }
+                    .disabled(!downloads.canClearFinished)
+            } label: {
+                Label(L.get("Downloads_Status"), systemImage: status == .all ? "line.3.horizontal.decrease.circle" : "line.3.horizontal.decrease.circle.fill")
+            }
+            .help(L.get("Downloads_Status"))
+            Menu {
                 Picker(L.get("Downloads_Platform"), selection: $platform) {
                     Text(L.get("Downloads_AllPlatforms")).tag(Platform?.none)
                     ForEach(Platform.supported) { Text($0.displayName).tag(Platform?.some($0)) }
                 }
                 .pickerStyle(.inline)
+                .labelsHidden()
+            } label: {
+                Label(L.get("Downloads_Platform"), systemImage: platform == nil ? "square.grid.2x2" : "square.grid.2x2.fill")
+            }
+            .help(L.get("Downloads_Platform"))
+            Menu {
                 Picker(L.get("Downloads_ThumbnailSize"), selection: $thumbnailSize) {
                     Text(L.get("Downloads_ThumbnailSmall")).tag(ThumbnailSize.small)
                     Text(L.get("Downloads_ThumbnailMedium")).tag(ThumbnailSize.medium)
                     Text(L.get("Downloads_ThumbnailLarge")).tag(ThumbnailSize.large)
                 }
                 .pickerStyle(.inline)
-                Divider()
-                Button(L.get("Downloads_ClearFinished")) { downloads.clearFinished() }
-                    .disabled(!downloads.canClearFinished)
+                .labelsHidden()
             } label: {
-                Label(L.get("Downloads_More"), systemImage: status == .all && platform == nil
-                      ? "line.3.horizontal.decrease" : "line.3.horizontal.decrease.circle.fill")
+                Label(L.get("Downloads_ThumbnailSize"), systemImage: "photo")
             }
-            .help(L.get("Downloads_More"))
+            .help(L.get("Downloads_ThumbnailSize"))
         }
-    }
-}
-
-/// The table's sort orders. Rows are main-actor objects and the table compares them on the main actor.
-nonisolated struct DownloadSort: SortComparator, Hashable {
-    enum Field: Hashable { case name, status, added }
-    var field: Field
-    var order: SortOrder = .forward
-
-    func compare(_ a: DownloadItem, _ b: DownloadItem) -> ComparisonResult {
-        let result = MainActor.assumeIsolated { () -> ComparisonResult in
-            switch field {
-            case .name: return a.title.localizedStandardCompare(b.title)
-            case .added: return a.addedAt.compare(b.addedAt)
-            case .status:
-                return a.statusOrder == b.statusOrder ? .orderedSame : a.statusOrder < b.statusOrder ? .orderedAscending : .orderedDescending
-            }
-        }
-        guard order == .reverse else { return result }
-        return result == .orderedAscending ? .orderedDescending : result == .orderedDescending ? .orderedAscending : .orderedSame
     }
 }
 
@@ -154,17 +156,6 @@ extension DownloadItem {
     }
 
     var addedAt: Date { createdAt }
-    /// Rows that need attention first when sorting by status.
-    var statusOrder: Int {
-        switch state {
-        case .failed: 0
-        case .downloading, .processing: 1
-        case .queued: 2
-        case .paused: 3
-        case .canceled: 4
-        case .completed: 5
-        }
-    }
     var stateLabel: String {
         switch state {
         case .queued: L.get("Status_Queued")
@@ -191,94 +182,93 @@ enum ThumbnailSize: String {
     }
 }
 
-private struct NameCell: View {
+/// A download: its picture, its name, and below that whatever is true of it now, with the likely action at the end.
+private struct DownloadRow: View {
     let item: DownloadItem
     let thumbnailWidth: CGFloat
-
-    var body: some View {
-        HStack(spacing: 10) {
-            RemoteImage(url: item.thumbnailURL, platform: item.platform)
-                .frame(width: thumbnailWidth, height: thumbnailWidth * 9 / 16)
-                .clipShape(RoundedRectangle(cornerRadius: thumbnailWidth > 100 ? 10 : 6))
-            VStack(alignment: .leading, spacing: 1) {
-                Text(item.title).lineLimit(1).help(item.title)
-                Text(item.label).font(.caption).foregroundStyle(.secondary).lineLimit(1)
-            }
-        }
-        .padding(.vertical, 2)
-    }
-}
-
-private struct StatusCell: View {
-    let item: DownloadItem
     @Environment(AppModel.self) private var model
 
     var body: some View {
-        HStack(spacing: 10) {
-            status
-            Spacer(minLength: 0)
-            rowAction
+        HStack(spacing: 12) {
+            RemoteImage(url: item.thumbnailURL, platform: item.platform)
+                .frame(width: thumbnailWidth, height: thumbnailWidth * 9 / 16)
+                .clipShape(RoundedRectangle(cornerRadius: thumbnailWidth > 100 ? 10 : 6))
+            VStack(alignment: .leading, spacing: 4) {
+                Text(item.title).lineLimit(1).help(item.title)
+                details
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            actions
+        }
+        .padding(.vertical, 3)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(item.title), \(item.stateLabel)")
+        .accessibilityValue(item.isActive ? "\(Int(item.progress))%" : "")
+    }
+
+    @ViewBuilder private var details: some View {
+        switch item.state {
+        case .downloading, .paused:
+            ProgressView(value: min(item.progress, 100), total: 100)
+                .controlSize(.small)
+                .tint(item.state == .paused ? Color.gray : Color.accentColor)
+            HStack(spacing: 8) {
+                Text(item.statusText).lineLimit(1).help(item.statusText)
+                Spacer(minLength: 8)
+                if let figures = item.liveFigures { Text(figures).monospacedDigit().lineLimit(1) }
+            }
+            .font(.caption)
+            .foregroundStyle(.secondary)
+        case .processing:
+            ProgressView().progressViewStyle(.linear).controlSize(.small)
+            Text(item.statusText).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+        case .failed:
+            Text(item.statusText).font(.caption).foregroundStyle(.red).lineLimit(1).help(item.statusText)
+        case .queued, .canceled:
+            Text(item.statusText).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+        case .completed:
+            if item.fileMissing {
+                Label(L.get("Status_FileMissing"), systemImage: "exclamationmark.triangle.fill")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+            } else {
+                Text("\(item.label) · \(item.addedAt.formatted(.dateTime.month().day().hour().minute()))")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .help(item.label)
+            }
         }
     }
 
-    /// The one thing most likely wanted on this row, as in Safari's download list.
-    @ViewBuilder private var rowAction: some View {
+    /// The most likely thing to do with this row, as in Safari's download list.
+    @ViewBuilder private var actions: some View {
         let downloads = model.downloads
-        if item.canPause {
-            actionButton("Action_Pause", "pause.fill") { downloads.pause(item) }
-        } else if item.canResume {
-            actionButton("Action_Resume", "play.fill") { downloads.resume(item) }
-        } else if item.canRetry {
-            actionButton(item.state == .completed ? "Action_Redownload" : "Action_Retry", "arrow.clockwise") { downloads.retry(item) }
-        } else if item.state == .completed {
-            actionButton("Menu_ShowInFinder", "magnifyingglass") { Finder.reveal(item.existingFile ?? item.folder) }
+        HStack(spacing: 10) {
+            if item.canPause {
+                actionButton("Action_Pause", "pause.fill") { downloads.pause(item) }
+            } else if item.canResume {
+                actionButton("Action_Resume", "play.fill") { downloads.resume(item) }
+            } else if item.canRetry {
+                actionButton(item.state == .completed ? "Action_Redownload" : "Action_Retry", "arrow.clockwise") { downloads.retry(item) }
+            } else if item.state == .completed {
+                if item.filePath != nil {
+                    // A cover is a picture: it opens rather than plays.
+                    actionButton(item.request.isCover ? "Menu_OpenFile" : "Action_Play", item.request.isCover ? "photo" : "play.circle.fill") {
+                        if let file = item.existingFile { NSWorkspace.shared.open(file) }
+                    }
+                }
+                actionButton("Menu_ShowInFinder", "magnifyingglass") { Finder.reveal(item.existingFile ?? item.folder) }
+            }
         }
     }
 
     private func actionButton(_ key: String, _ symbol: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) { Image(systemName: symbol).imageScale(.small) }
+        Button(action: action) { Image(systemName: symbol) }
             .buttonStyle(.borderless)
             .foregroundStyle(.secondary)
             .help(L.get(key))
             .accessibilityLabel(L.get(key))
-    }
-
-    private var status: some View {
-        VStack(alignment: .leading, spacing: 3) {
-            switch item.state {
-            case .downloading, .paused:
-                ProgressView(value: min(item.progress, 100), total: 100)
-                    .controlSize(.small)
-                    .tint(item.state == .paused ? .secondary : .accentColor)
-            case .processing:
-                ProgressView().progressViewStyle(.linear).controlSize(.small)
-            default:
-                EmptyView()
-            }
-            HStack(spacing: 4) {
-                if item.state == .failed || item.fileMissing {
-                    Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(item.fileMissing ? .orange : .red).accessibilityHidden(true)
-                } else if item.state == .completed {
-                    Image(systemName: "checkmark.circle.fill").foregroundStyle(.green).accessibilityHidden(true)
-                        .symbolEffect(.bounce, value: item.state == .completed)
-                }
-                Text(item.fileMissing ? L.get("Status_FileMissing") : item.state == .completed ? L.get("Status_Completed") : item.statusText)
-                    .font(.caption)
-                    .foregroundStyle(item.state == .failed ? AnyShapeStyle(.red) : AnyShapeStyle(.secondary))
-                    .lineLimit(1)
-                    .help(item.statusText)
-                Spacer(minLength: 8)
-                if let figures = item.liveFigures {
-                    Text(figures)
-                        .font(.caption.monospacedDigit())
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
-            }
-        }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(item.stateLabel), \(item.statusText)")
-        .accessibilityValue(item.isActive ? "\(Int(item.progress))%" : "")
     }
 }
 
